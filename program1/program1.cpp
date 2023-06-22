@@ -110,7 +110,7 @@ static void clickCallback(int event, int x, int y, int flags, void* param)
 			
 		}
     }
-    else if(mode == 3)
+    else if (mode == 3)
     {
 		//Pencil
 		if (event == cv::EVENT_LBUTTONDOWN)
