@@ -1,40 +1,51 @@
+/*******************************************************************************************************************//**
+ * @file program1.cpp
+ * @brief C++ example of basic image manipulation program using OpenCV
+ * @author Reety Gyawali (1001803756)
+ **********************************************************************************************************************/
 
-// include necessary dependencies
+// Include necessary dependencies
 #include <iostream>
 #include <cstdio>
 #include "opencv2/opencv.hpp"
 
-// configuration parameters
+// Configuration parameters
 #define NUM_COMMAND_LINE_ARGUMENTS 1
 #define DISPLAY_WINDOW_NAME "Hello world!"
 
 cv::Mat imageIn;
 cv::Mat imageOrig;
 int mode = 0;
+// Default eyedropper value is white
 cv::Vec3b eyedropper_val(255,255,255);
 bool draw = false;
 bool topLeft = false;
 cv::Point tl;
 cv::Point br;
 
-//Utility function for paint bucket does this, this, and this
+// Utility function for paint bucket that recursively converts target pixel and surrounding pixels to new color
 void fill(int x, int y, cv::Vec3b oldColor, cv::Vec3b newColor)
 {
 	if (x >= imageIn.size().width || y >= imageIn.size().height || x < 0 || y < 0)
 	{
+		// Exit when coordinates exceed image dimensions
 		return;
 	}
 	else if (imageIn.at<cv::Vec3b>(y, x) != oldColor)
 	{
+		// Exit if target pixel is not old color
 		return;
 	}
 	else if (imageIn.at<cv::Vec3b>(y, x) == newColor)
 	{
+		// Exit is target pixel is already the new color
 		return;
 	}
 
+	// Change color of target pixel to new color
 	imageIn.at<cv::Vec3b>(y, x) = newColor;
 
+	// Calling function on right, left, top, and bottom pixels
 	fill(x+1, y, oldColor, newColor);
 	fill(x-1, y, oldColor, newColor);
 	fill(x, y+1, oldColor, newColor);
@@ -43,10 +54,18 @@ void fill(int x, int y, cv::Vec3b oldColor, cv::Vec3b newColor)
 
 static void clickCallback(int event, int x, int y, int flags, void* param)
 {
-    // cast userdata to a cv::Mat
+    // Image is now the image user clicked on
     imageIn = *(cv::Mat *)param;
     
-    // handle the mouse event types
+    /*
+		Right button down toggles through 5 modes
+		Mode 1 --> Eyedropper
+		Mode 2 --> Crop
+		Mode 3 --> Pencil
+		Mode 4 --> Paint bucket
+		Mode 5 --> Reset
+	*/ 
+
     if (event == cv::EVENT_RBUTTONDOWN)
     {        
         if (mode == 5)
@@ -81,7 +100,8 @@ static void clickCallback(int event, int x, int y, int flags, void* param)
     }
     else if (mode == 1)
     {    
-		//Eyedropper    
+		// Eyedropper    
+		// On left click, store eyedropper value as current pixel's color
 		if (event == cv::EVENT_LBUTTONDOWN)
 		{
 			eyedropper_val = imageIn.at<cv::Vec3b>(y, x);
@@ -90,19 +110,19 @@ static void clickCallback(int event, int x, int y, int flags, void* param)
     }
     else if (mode == 2) 
     {
-		//Crop
+		// Crop
 		if (event == cv::EVENT_LBUTTONDOWN)
 		{
-			//Record click location
+			// Record click location
 			tl.x = x;
 			tl.y = y;
 		}
 		else if (event == cv::EVENT_LBUTTONUP)
 		{
-			//Record release location
+			// Record release location
 			br.x = x;
 			br.y = y;
-			//Extract, copy, and display rectangle ROI
+			// Extract, replace current image with rectangle ROI, and display 
 			cv::Rect region(tl, br);
 			cv::Mat imageROI = imageIn(region);
 			imageROI.copyTo(imageIn);
@@ -112,7 +132,8 @@ static void clickCallback(int event, int x, int y, int flags, void* param)
     }
     else if (mode == 3)
     {
-		//Pencil
+		// Pencil
+		// When left button is down and moving, target pixels are changed to eyedropper value 
 		if (event == cv::EVENT_LBUTTONDOWN)
 		{
 			draw = true;
@@ -134,7 +155,8 @@ static void clickCallback(int event, int x, int y, int flags, void* param)
     }
 	else if (mode == 4)
 	{
-		//Paint bucket
+		// Paint bucket
+		// On left button click, if target pixel is not the eyedropper value, fill the area with eyedropper value and display
 		if (event == cv::EVENT_LBUTTONDOWN)
 		{
 			cv::Vec3b oldColor = imageIn.at<cv::Vec3b>(y, x);
@@ -147,8 +169,8 @@ static void clickCallback(int event, int x, int y, int flags, void* param)
 	}
 	else if (mode == 5)
 	{
-		//Reset
-		//On left double click, replace image with original and display
+		// Reset
+		// On left double click, replace image with original and display
 		if (event == cv::EVENT_LBUTTONDBLCLK)
 		{
 			imageOrig.copyTo(imageIn);
