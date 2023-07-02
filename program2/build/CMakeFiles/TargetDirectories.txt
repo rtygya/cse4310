@@ -1,0 +1,3 @@
+/home/computer/cse4310/program2/build/CMakeFiles/program2.dir
+/home/computer/cse4310/program2/build/CMakeFiles/edit_cache.dir
+/home/computer/cse4310/program2/build/CMakeFiles/rebuild_cache.dir

@@ -32,7 +32,7 @@ int main(int argc, char **argv)
     cv::Mat imageIn;
 
     // validate and parse the command line arguments
-    if(argc != NUM_COMNMAND_LINE_ARGUMENTS + 1)
+    if(argc != NUM_COMNMAND_LINE_ARGUMENTS + 1) 
     {
         std::printf("USAGE: %s <image_path> \n", argv[0]);
         return 0;
@@ -127,6 +127,8 @@ int main(int argc, char **argv)
         // draw any ellipse with sufficient inliers
         if(contours.at(i).size() > minEllipseInliers)
         {
+            std::cout <<  contours.at(i).size() << std::endl;
+
             cv::Scalar color = cv::Scalar(rand.uniform(0, 256), rand.uniform(0,256), rand.uniform(0,256));
             cv::ellipse(imageEllipse, fittedEllipses[i], color, 2);
         }
