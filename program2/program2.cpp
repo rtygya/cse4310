@@ -146,3 +146,58 @@ int main(int argc, char **argv)
         
     cv::waitKey();
 }
+
+/* THIS IS THE CHATGPT CODE
+
+#include <opencv2/opencv.hpp>
+#include <iostream>
+#include <iomanip>
+
+int main() {
+    // ... Previous code to read the input image and find contours ...
+
+    // Define size ranges for each coin type (in pixels)
+    double pennySizeMin = 15;
+    double pennySizeMax = 18;
+    double nickelSizeMin = 20;
+    double nickelSizeMax = 23;
+    double dimeSizeMin = 22;
+    double dimeSizeMax = 25;
+    double quarterSizeMin = 24;
+    double quarterSizeMax = 27;
+
+    // Draw ellipse contours and classify coins
+    for (size_t i = 0; i < contours.size(); i++) {
+        if (contours[i].size() >= 5) {
+            cv::RotatedRect ellipse = cv::fitEllipse(contours[i]);
+            cv::ellipse(image, ellipse, cv::Scalar(0, 255, 0), 2);
+
+            // Measure the radius of the fitted ellipse (average of width and height)
+            double radius = (ellipse.size.width + ellipse.size.height) / 4.0;
+
+            // Classify the coin based on its radius
+            std::string coinType;
+            if (radius >= pennySizeMin && radius <= pennySizeMax) {
+                coinType = "Penny";
+            } else if (radius >= nickelSizeMin && radius <= nickelSizeMax) {
+                coinType = "Nickel";
+            } else if (radius >= dimeSizeMin && radius <= dimeSizeMax) {
+                coinType = "Dime";
+            } else if (radius >= quarterSizeMin && radius <= quarterSizeMax) {
+                coinType = "Quarter";
+            } else {
+                coinType = "Unknown";
+            }
+
+            // Display the coin type on the image
+            std::stringstream ss;
+            ss << coinType << " - " << std::fixed << std::setprecision(2) << radius << " pixels";
+            cv::putText(image, ss.str(), cv::Point(ellipse.center.x, ellipse.center.y + 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
+        }
+    }
+
+    // ... Display and wait for user input as before ...
+
+    return 0;
+}
+*/
