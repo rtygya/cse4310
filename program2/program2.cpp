@@ -2,7 +2,7 @@
 /*******************************************************************************************************************//**
  * @file program2.cpp
  * @brief C++ example of coin sorting/counting program using Canny edge detection and ellipse model fitting in OpenCV 
- * @author Reety Gyawali
+ * @author Reety Gyawali 1001803756
  **********************************************************************************************************************/
 
 // include necessary dependencies
