@@ -1,15 +1,8 @@
-//pupil tracker code
-//run canny
-//remove noise dilate then erode
-//run countour on edges to find shape
-//fit a rectangle/ellipse
-
-//make sure images are consistent not 45 degrees
 
 /*******************************************************************************************************************//**
- * @file cv_ellipse.cpp
- * @brief C++ example of Canny edge detection and ellipse model fitting in OpenCV
- * @author Christopher D. McMurrough
+ * @file program2.cpp
+ * @brief C++ example of coin sorting/counting program using Canny edge detection and ellipse model fitting in OpenCV 
+ * @author Reety Gyawali
  **********************************************************************************************************************/
 
 // include necessary dependencies
@@ -20,15 +13,23 @@
 // configuration parameters
 #define NUM_COMNMAND_LINE_ARGUMENTS 1
 
-/*******************************************************************************************************************//**
- * @brief program entry point
- * @param[in] argc number of command line arguments
- * @param[in] argv string array of command line arguments
- * @return return code (0 for normal termination)
- * @author Christoper D. McMurrough
- **********************************************************************************************************************/
+
 int main(int argc, char **argv)
 {
+    // variables to track coin count and sizes (in pixels)
+    int quarter = 0;
+    int nickel = 0;
+    int penny = 0;
+    int dime = 0;
+    double pennySizeMin = 32;
+    double pennySizeMax = 34;
+    double nickelSizeMin = 34;
+    double nickelSizeMax = 38;
+    double dimeSizeMin = 28;
+    double dimeSizeMax = 32;
+    double quarterSizeMin = 38;
+    double quarterSizeMax = 45;
+    
     cv::Mat imageIn;
 
     // validate and parse the command line arguments
@@ -49,11 +50,6 @@ int main(int argc, char **argv)
         }
     }
 
-    // get the image size
-    std::cout << "image width: " << imageIn.size().width << std::endl;
-    std::cout << "image height: " << imageIn.size().height << std::endl;
-    std::cout << "image channels: " << imageIn.channels() << std::endl;
-
     // convert the image to grayscale
     cv::Mat imageGray;
     cv::cvtColor(imageIn, imageGray, cv::COLOR_BGR2GRAY);
@@ -66,7 +62,7 @@ int main(int argc, char **argv)
     cv::Canny(imageGray, imageEdges, cannyThreshold1, cannyThreshold2, cannyAperture);
     
     // erode and dilate the edges to remove noise
-    int morphologySize = 1; //erode, dilate, and fill
+    int morphologySize = 1; 
     cv::Mat edgesDilated;
     cv::dilate(imageEdges, edgesDilated, cv::Mat(), cv::Point(-1, -1), morphologySize);
     cv::Mat edgesEroded;
@@ -77,36 +73,6 @@ int main(int argc, char **argv)
     //std::vector<int> hierarchy;
     //just finding external contours
     cv::findContours(edgesEroded, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
-
-    // draw the contours
-    cv::Mat imageContours = cv::Mat::zeros(imageEdges.size(), CV_8UC3);
-    cv::RNG rand(12345);
-    for(int i = 0; i < contours.size(); i++)
-    {
-        cv::Scalar color = cv::Scalar(rand.uniform(0, 256), rand.uniform(0,256), rand.uniform(0,256));
-        cv::drawContours(imageContours, contours, i, color);
-    }
-
-    // compute minimum area bounding rectangles
-    std::vector<cv::RotatedRect> minAreaRectangles(contours.size());
-    for(int i = 0; i < contours.size(); i++)
-    {
-        // compute a minimum area bounding rectangle for the contour
-        minAreaRectangles[i] = cv::minAreaRect(contours[i]);
-    }
-
-    // draw the rectangles
-    cv::Mat imageRectangles = cv::Mat::zeros(imageEdges.size(), CV_8UC3);
-    for(int i = 0; i < contours.size(); i++)
-    {
-        cv::Scalar color = cv::Scalar(rand.uniform(0, 256), rand.uniform(0,256), rand.uniform(0,256));
-        cv::Point2f rectanglePoints[4];
-        minAreaRectangles[i].points(rectanglePoints);
-        for(int j = 0; j < 4; j++)
-        {
-            cv::line(imageRectangles, rectanglePoints[j], rectanglePoints[(j+1) % 4], color);
-        }
-    }
 
     // fit ellipses to contours containing sufficient inliers
     std::vector<cv::RotatedRect> fittedEllipses(contours.size());
@@ -120,84 +86,54 @@ int main(int argc, char **argv)
     }
 
     // draw the ellipses
-    cv::Mat imageEllipse = cv::Mat::zeros(imageEdges.size(), CV_8UC3);
+    cv::Mat imageEllipse = imageIn.clone();
     const int minEllipseInliers = 50;
     for(int i = 0; i < contours.size(); i++)
     {
         // draw any ellipse with sufficient inliers
         if(contours.at(i).size() > minEllipseInliers)
         {
-            std::cout <<  contours.at(i).size() << std::endl;
+            cv::Scalar color = cv::Scalar(0, 0, 0);
+            // Measure the radius of the fitted ellipse (average of width and height)
+            double radius = (fittedEllipses[i].size.width + fittedEllipses[i].size.height) / 4.0;
+            std::cout <<  radius << std::endl;
 
-            cv::Scalar color = cv::Scalar(rand.uniform(0, 256), rand.uniform(0,256), rand.uniform(0,256));
+            //Use radius to sort into 4 categories (quarter, nickel, penny, dime)
+            if (radius >= quarterSizeMin && radius <= quarterSizeMax) {
+                quarter++;
+                color = cv::Scalar(0, 255, 0);
+            } else if (radius >= nickelSizeMin && radius <= nickelSizeMax) {
+                nickel++;
+                color = cv::Scalar(0, 255, 255);
+            } else if (radius >= pennySizeMin && radius <=pennySizeMax) {
+                penny++;
+                color = cv::Scalar(0, 0, 255);
+            } else if (radius >= dimeSizeMin && radius <= dimeSizeMax) {
+                dime++;
+                color = cv::Scalar(255, 0, 0);
+            } else {
+                //unknown
+            }
             cv::ellipse(imageEllipse, fittedEllipses[i], color, 2);
         }
     }
 
-    // display the images
+    // display the images in two separate windows
     cv::imshow("imageIn", imageIn);
-    cv::imshow("imageGray", imageGray);
-    cv::imshow("imageEdges", imageEdges);
-    cv::imshow("edges dilated", edgesDilated);
-    cv::imshow("edges eroded", edgesEroded);
-    cv::imshow("imageContours", imageContours);
-    cv::imshow("imageRectangles", imageRectangles);
     cv::imshow("imageEllipse", imageEllipse);
-        
+
+    //Print coin count / total value to console
+    std::cout <<  "Penny - " << penny << std::endl;
+    std::cout <<  "Nickel - " << nickel << std::endl;
+    std::cout <<  "Dime - " << dime << std::endl;
+    std::cout <<  "Quarter - " << quarter << std::endl;
+    double total = (0.01 * penny) + (0.05 * nickel) + (0.10 * dime) + (0.25 * quarter);
+    std::cout <<  "Total - $" << total << std::endl;
+
+    std::cout <<  "\nPress any key to terminate." << std::endl;
     cv::waitKey();
-}
-
-/* THIS IS THE CHATGPT CODE
-
-#include <opencv2/opencv.hpp>
-#include <iostream>
-#include <iomanip>
-
-int main() {
-    // ... Previous code to read the input image and find contours ...
-
-    // Define size ranges for each coin type (in pixels)
-    double pennySizeMin = 15;
-    double pennySizeMax = 18;
-    double nickelSizeMin = 20;
-    double nickelSizeMax = 23;
-    double dimeSizeMin = 22;
-    double dimeSizeMax = 25;
-    double quarterSizeMin = 24;
-    double quarterSizeMax = 27;
-
-    // Draw ellipse contours and classify coins
-    for (size_t i = 0; i < contours.size(); i++) {
-        if (contours[i].size() >= 5) {
-            cv::RotatedRect ellipse = cv::fitEllipse(contours[i]);
-            cv::ellipse(image, ellipse, cv::Scalar(0, 255, 0), 2);
-
-            // Measure the radius of the fitted ellipse (average of width and height)
-            double radius = (ellipse.size.width + ellipse.size.height) / 4.0;
-
-            // Classify the coin based on its radius
-            std::string coinType;
-            if (radius >= pennySizeMin && radius <= pennySizeMax) {
-                coinType = "Penny";
-            } else if (radius >= nickelSizeMin && radius <= nickelSizeMax) {
-                coinType = "Nickel";
-            } else if (radius >= dimeSizeMin && radius <= dimeSizeMax) {
-                coinType = "Dime";
-            } else if (radius >= quarterSizeMin && radius <= quarterSizeMax) {
-                coinType = "Quarter";
-            } else {
-                coinType = "Unknown";
-            }
-
-            // Display the coin type on the image
-            std::stringstream ss;
-            ss << coinType << " - " << std::fixed << std::setprecision(2) << radius << " pixels";
-            cv::putText(image, ss.str(), cv::Point(ellipse.center.x, ellipse.center.y + 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
-        }
-    }
-
-    // ... Display and wait for user input as before ...
-
+    
+    cv::destroyAllWindows();
     return 0;
 }
-*/
+

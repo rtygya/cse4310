@@ -1,0 +1,3 @@
+/home/computer/cse4310/demo applications/pupil_tracker/CMakeFiles/pupil_demo.dir
+/home/computer/cse4310/demo applications/pupil_tracker/CMakeFiles/edit_cache.dir
+/home/computer/cse4310/demo applications/pupil_tracker/CMakeFiles/rebuild_cache.dir
