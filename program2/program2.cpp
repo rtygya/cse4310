@@ -21,14 +21,14 @@ int main(int argc, char **argv)
     int nickel = 0;
     int penny = 0;
     int dime = 0;
-    double pennySizeMin = 32;
-    double pennySizeMax = 34;
-    double nickelSizeMin = 34;
-    double nickelSizeMax = 38;
-    double dimeSizeMin = 28;
-    double dimeSizeMax = 32;
-    double quarterSizeMin = 38;
-    double quarterSizeMax = 45;
+    double pennySizeMin = 44;
+    double pennySizeMax = 50;
+    double nickelSizeMin = 50;
+    double nickelSizeMax = 57;
+    double dimeSizeMin = 40;
+    double dimeSizeMax = 44;
+    double quarterSizeMin = 57;
+    double quarterSizeMax = 60;
     
     cv::Mat imageIn;
 
