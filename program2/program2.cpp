@@ -96,7 +96,6 @@ int main(int argc, char **argv)
             cv::Scalar color = cv::Scalar(0, 0, 0);
             // Measure the radius of the fitted ellipse (average of width and height)
             double radius = (fittedEllipses[i].size.width + fittedEllipses[i].size.height) / 4.0;
-            std::cout <<  radius << std::endl;
 
             //Use radius to sort into 4 categories (quarter, nickel, penny, dime)
             if (radius >= quarterSizeMin && radius <= quarterSizeMax) {
