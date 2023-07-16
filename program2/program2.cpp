@@ -56,10 +56,7 @@ int main(int argc, char **argv)
 
     // find the image edges
     cv::Mat imageEdges;
-    const double cannyThreshold1 = 100;
-    const double cannyThreshold2 = 200;
-    const int cannyAperture = 3;
-    cv::Canny(imageGray, imageEdges, cannyThreshold1, cannyThreshold2, cannyAperture);
+    cv::Canny(imageGray, imageEdges, 100, 200, 3);
     
     // erode and dilate the edges to remove noise
     int morphologySize = 1; 

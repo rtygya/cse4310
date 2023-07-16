@@ -1,6 +1,6 @@
 /*******************************************************************************************************************//**
  * @file program3.cpp
- * @brief C++ example of object tracking in video in Open CV
+ * @brief C++ example of traffic counting program in Open CV
  * @author Reety Gyawali (1001803756)
  **********************************************************************************************************************/
 
@@ -49,7 +49,7 @@ int main(int argc, char **argv)
 
     // create image window
     //cv::namedWindow("captureFrame", cv::WINDOW_AUTOSIZE);
-	cv::namedWindow("fgMask", cv::WINDOW_AUTOSIZE);
+	cv::namedWindow(DISPLAY_WINDOW_NAME, cv::WINDOW_AUTOSIZE);
 
     // set background filtering parameters
     const int bgHistory = 200;
@@ -64,82 +64,79 @@ int main(int argc, char **argv)
     int frameCount = 0;
     while(doCapture)
     {
-        // get the start time
-        double startTicks = static_cast<double>(cv::getTickCount());
-
         // attempt to acquire and process an image frame
         cv::Mat captureFrame;
         cv::Mat grayFrame;
-        //cv::Mat processedFrame;
+
         bool captureSuccess = capture.read(captureFrame);
         if(captureSuccess)
         {
 			// pre-process the raw image frame
-            const int rangeMin = 0;
-            const int rangeMax = 255;
             cv::cvtColor(captureFrame, grayFrame, cv::COLOR_BGR2GRAY);
-            cv::normalize(grayFrame, grayFrame, rangeMin, rangeMax, cv::NORM_MINMAX, CV_8UC1);
+            cv::normalize(grayFrame, grayFrame, 0, 255, cv::NORM_MINMAX, CV_8UC1);
 
 			// extract the foreground mask from image
 			pMOG2->apply(grayFrame, fgMask);
 
             // find the image edges
             cv::Mat imageEdges;
-            const double cannyThreshold1 = 100;
-            const double cannyThreshold2 = 200;
-            const int cannyAperture = 3;
-            cv::Canny(captureFrame, imageEdges, cannyThreshold1, cannyThreshold2, cannyAperture);
+            cv::Canny(fgMask, imageEdges, 100, 200);
             
             // erode and dilate the edges to remove noise
-            int morphologySize = 1; //erode, dilate, and fill
             cv::Mat edgesDilated;
-            cv::dilate(imageEdges, edgesDilated, cv::Mat(), cv::Point(-1, -1), morphologySize);
+            cv::dilate(imageEdges, edgesDilated, cv::Mat(), cv::Point(-1, -1), 1);
             cv::Mat edgesEroded;
-            cv::erode(edgesDilated, edgesEroded, cv::Mat(), cv::Point(-1, -1), morphologySize);
+            cv::erode(edgesDilated, edgesEroded, cv::Mat(), cv::Point(-1, -1), 1);
             
             // locate the image contours (after applying a threshold or canny)
             std::vector<std::vector<cv::Point> > contours;
-            //std::vector<int> hierarchy;
-            //just finding external contours
-            cv::findContours(edgesEroded, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
+            cv::findContours(edgesEroded, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
             // draw the contours
-            cv::Mat imageContours = cv::Mat::zeros(imageEdges.size(), CV_8UC3);
-            cv::RNG rand(12345);
+            //cv::drawContours(grayFrame, contours, -1, cv::Scalar(0, 255, 0));
+       
+            /* compute minimum area bounding rectangles
+            std::vector<cv::RotatedRect> minAreaRectangles(contours.size());
             for(int i = 0; i < contours.size(); i++)
             {
-                cv::Scalar color = cv::Scalar(rand.uniform(0, 256), rand.uniform(0,256), rand.uniform(0,256));
-                cv::drawContours(imageContours, contours, i, color);
+                // compute a minimum area bounding rectangle for the contour
+                minAreaRectangles[i] = cv::minAreaRect(contours[i]);
+            }
+
+            // draw the rectangles
+            //cv::Mat imageRectangles = cv::Mat::zeros(imageEdges.size(), CV_8UC3);
+            for(int i = 0; i < contours.size(); i++)
+            {
+                cv::Point2f rectanglePoints[4];
+                minAreaRectangles[i].points(rectanglePoints);
+                for(int j = 0; j < 4; j++)
+                {
+                    cv::line(captureFrame, rectanglePoints[j], rectanglePoints[(j+1) % 4], cv::Scalar(0,0,255));
+                }
+            } */
+
+            for (const auto& contour : contours) {
+                cv::Rect boundingBox = cv::boundingRect(contour);
+                cv::rectangle(captureFrame, boundingBox, cv::Scalar(0, 0, 255));
             }
 
             // increment the frame counter
             frameCount++;
+
+            //cv::imshow("captureFrame", captureFrame);
+			cv::imshow(DISPLAY_WINDOW_NAME, captureFrame);
+            std::cout <<  frameCount << std::endl;
+
+            // check for program termination
+            if((char) cv::waitKey(0) == 'q')
+            {
+                doCapture = false;
+            }
         }
         else
         {
             std::printf("Unable to acquire image frame! \n");
         }
-
-        // update the GUI window if necessary
-        if(captureSuccess)
-        {
-            //cv::imshow("captureFrame", captureFrame);
-			cv::imshow("fgMask", fgMask);
-
-            // get the number of milliseconds per frame
-            int delayMs = (1.0 / captureFPS) * 1000;
-
-            // check for program termination
-            if(((char) cv::waitKey(delayMs)) == 'q')
-            {
-                doCapture = false;
-            }
-        }
-
-        /* compute the frame processing time
-        double endTicks = static_cast<double>(cv::getTickCount());
-        double elapsedTime = (endTicks - startTicks) / cv::getTickFrequency();
-        std::cout << "Frame processing time: " << elapsedTime << std::endl; */
     }
 
     // release program resources before returning
