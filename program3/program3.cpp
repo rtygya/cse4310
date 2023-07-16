@@ -48,8 +48,8 @@ int main(int argc, char **argv)
     std::cout << "Video source opened successfully (width=" << captureWidth << " height=" << captureHeight << " fps=" << captureFPS << ")!" << std::endl;
 
     // create image window
-    //cv::namedWindow("captureFrame", cv::WINDOW_AUTOSIZE);
-	cv::namedWindow(DISPLAY_WINDOW_NAME, cv::WINDOW_AUTOSIZE);
+    cv::namedWindow("fgmask", cv::WINDOW_AUTOSIZE);
+	//cv::namedWindow(DISPLAY_WINDOW_NAME, cv::WINDOW_AUTOSIZE);
 
     // set background filtering parameters
     const int bgHistory = 200;
@@ -83,52 +83,29 @@ int main(int argc, char **argv)
             cv::Canny(fgMask, imageEdges, 100, 200);
             
             // erode and dilate the edges to remove noise
+            cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(20, 20));
             cv::Mat edgesDilated;
-            cv::dilate(imageEdges, edgesDilated, cv::Mat(), cv::Point(-1, -1), 1);
+            cv::dilate(imageEdges, edgesDilated, kernel);
+            cv::dilate(edgesDilated, edgesDilated, kernel);
             cv::Mat edgesEroded;
-            cv::erode(edgesDilated, edgesEroded, cv::Mat(), cv::Point(-1, -1), 1);
-            
+            cv::erode(edgesDilated, edgesEroded, kernel);
+
             // locate the image contours (after applying a threshold or canny)
             std::vector<std::vector<cv::Point> > contours;
             cv::findContours(edgesEroded, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-            // draw the contours
-            //cv::drawContours(grayFrame, contours, -1, cv::Scalar(0, 255, 0));
-       
-            /* compute minimum area bounding rectangles
-            std::vector<cv::RotatedRect> minAreaRectangles(contours.size());
-            for(int i = 0; i < contours.size(); i++)
-            {
-                // compute a minimum area bounding rectangle for the contour
-                minAreaRectangles[i] = cv::minAreaRect(contours[i]);
-            }
-
             // draw the rectangles
-            //cv::Mat imageRectangles = cv::Mat::zeros(imageEdges.size(), CV_8UC3);
-            for(int i = 0; i < contours.size(); i++)
-            {
-                cv::Point2f rectanglePoints[4];
-                minAreaRectangles[i].points(rectanglePoints);
-                for(int j = 0; j < 4; j++)
-                {
-                    cv::line(captureFrame, rectanglePoints[j], rectanglePoints[(j+1) % 4], cv::Scalar(0,0,255));
-                }
-            } */
-
             for (const auto& contour : contours) {
                 cv::Rect boundingBox = cv::boundingRect(contour);
                 cv::rectangle(captureFrame, boundingBox, cv::Scalar(0, 0, 255));
             }
 
-            // increment the frame counter
-            frameCount++;
-
-            //cv::imshow("captureFrame", captureFrame);
-			cv::imshow(DISPLAY_WINDOW_NAME, captureFrame);
-            std::cout <<  frameCount << std::endl;
+            cv::imshow("fgmask", fgMask);
+			//cv::imshow(DISPLAY_WINDOW_NAME, captureFrame);
+            //std::cout <<  frameCount << std::endl;
 
             // check for program termination
-            if((char) cv::waitKey(0) == 'q')
+            if((char) cv::waitKey(1) == 'q')
             {
                 doCapture = false;
             }

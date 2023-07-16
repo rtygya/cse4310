@@ -1,0 +1,3 @@
+/home/computer/cse4310/cv_background/build/CMakeFiles/cv_pmog.dir
+/home/computer/cse4310/cv_background/build/CMakeFiles/edit_cache.dir
+/home/computer/cse4310/cv_background/build/CMakeFiles/rebuild_cache.dir
