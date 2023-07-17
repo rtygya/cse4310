@@ -16,7 +16,7 @@ int main() {
 
     // Define parameters for background subtraction
     int bgHistory = 200;
-    double bgThreshold = 100.0;
+    double bgThreshold = 60.0;
     bool bgShadowDetection = false;
 
     // Create the background subtractor
@@ -29,7 +29,7 @@ int main() {
     cv::Rect rightRegion(0, 0, capture.get(cv::CAP_PROP_FRAME_WIDTH), capture.get(cv::CAP_PROP_FRAME_HEIGHT) / 2);
 
     // Create structuring element for morphological operations
-    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(7, 7));
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(20, 20));
 
     // Start processing frames
     cv::Mat frame;
@@ -45,11 +45,8 @@ int main() {
         cv::Mat fgMask;
         pMOG2->apply(frame, fgMask);
 
-        // Perform morphological operations (erosion and dilation) on the foreground mask
+        // Try to fill up holes in foreground mask
         cv::morphologyEx(fgMask, fgMask, cv::MORPH_CLOSE, kernel);
-        //cv::dilate(fgMask, fgMask, structuringElement);
-        //cv::dilate(fgMask, fgMask, structuringElement);
-        //cv::erode(fgMask, fgMask, structuringElement);
         
         // Find contours in the foreground mask
         std::vector<std::vector<cv::Point>> contours;
