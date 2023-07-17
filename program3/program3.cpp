@@ -28,12 +28,16 @@ int main() {
     cv::Rect leftRegion(0, capture.get(cv::CAP_PROP_FRAME_HEIGHT) / 2, capture.get(cv::CAP_PROP_FRAME_WIDTH), capture.get(cv::CAP_PROP_FRAME_HEIGHT) / 2);
     cv::Rect rightRegion(0, 0, capture.get(cv::CAP_PROP_FRAME_WIDTH), capture.get(cv::CAP_PROP_FRAME_HEIGHT) / 2);
 
-    // Create structuring element for morphological operations
+    // Create kernel for morphological operations
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(20, 20));
+
+    // Define a map to store trackers for each box
+    std::unordered_map<int, cv::Ptr<cv::TrackerCSRT>> trackers;
 
     // Start processing frames
     cv::Mat frame;
     cv::Mat origFrame;
+    int boxId = 0;
     while (capture.read(frame)) {
         origFrame = frame.clone();
 
@@ -62,18 +66,47 @@ int main() {
                 // Create a bounding box around the contour
                 cv::Rect boundingBox = cv::boundingRect(contour);
 
-                // Check if the bounding box intersects with the left or right region
-                // Draw the bounding box on the frame
+                // Check if the bounding box intersects with the left or right region and draw bounding box for the frame
                 if (intersects(boundingBox, leftRegion)) {
-                    countLeftToRight++;
+                    if (trackers.find(boxId) == trackers.end()) {
+                        // Create and initialize a CSRT tracker for the bounding box
+                        cv::Ptr<cv::TrackerCSRT> tracker = cv::TrackerCSRT::create();
+                        tracker->init(frame, boundingBox);
+                        trackers[boxId] = tracker;
+                        countLeftToRight++;
+                    }
                     cv::rectangle(origFrame, boundingBox, cv::Scalar(0, 0, 255), 2);
+                    boxId++;
                 } else if (intersects(boundingBox, rightRegion)) {
-                    countRightToLeft++;
+                    if (trackers.find(boxId) == trackers.end()) {
+                        // Create and initialize a CSRT tracker for the bounding box
+                        cv::Ptr<cv::TrackerCSRT> tracker = cv::TrackerCSRT::create();
+                        tracker->init(frame, boundingBox);
+                        trackers[boxId] = tracker;
+                        countRightToLeft++;
+                    }
                     cv::rectangle(origFrame, boundingBox, cv::Scalar(0, 255, 0), 2);
+                    boxId++;
                 }
             }
         }
 
+        // Update the trackers and draw bounding boxes
+        for (auto& [id, tracker] : trackers) {
+            cv::Rect boundingBox;
+
+            // Update the tracker with the current frame
+            bool success = tracker->update(frame, boundingBox);
+
+            // Check if the tracking was successful
+            if (success) {
+                // Draw the bounding box around the tracked object
+                cv::rectangle(origFrame, boundingBox, cv::Scalar(255, 0, 0), 2);
+            } else {
+                // Remove the tracker if tracking fails
+                trackers.erase(id);
+            }
+        }
         // Display the frame with bounding boxes and count information
         cv::putText(frame, "Left to Right: " + std::to_string(countLeftToRight), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
         cv::putText(frame, "Right to Left: " + std::to_string(countRightToLeft), cv::Point(10, 70), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
