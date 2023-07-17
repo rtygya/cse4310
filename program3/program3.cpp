@@ -16,7 +16,7 @@ int main() {
 
     // Define parameters for background subtraction
     int bgHistory = 200;
-    double bgThreshold = 300.0;
+    double bgThreshold = 100.0;
     bool bgShadowDetection = false;
 
     // Create the background subtractor
@@ -29,19 +29,27 @@ int main() {
     cv::Rect rightRegion(0, 0, capture.get(cv::CAP_PROP_FRAME_WIDTH), capture.get(cv::CAP_PROP_FRAME_HEIGHT) / 2);
 
     // Create structuring element for morphological operations
-    cv::Mat structuringElement = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(7, 7));
 
     // Start processing frames
     cv::Mat frame;
+    cv::Mat origFrame;
     while (capture.read(frame)) {
+        origFrame = frame.clone();
+
+        // Gray scaling and normalizing
+        cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY);
+        cv::normalize(frame, frame, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+        
         // Apply background subtraction
         cv::Mat fgMask;
         pMOG2->apply(frame, fgMask);
 
         // Perform morphological operations (erosion and dilation) on the foreground mask
-        cv::dilate(fgMask, fgMask, structuringElement);
+        cv::morphologyEx(fgMask, fgMask, cv::MORPH_CLOSE, kernel);
         //cv::dilate(fgMask, fgMask, structuringElement);
-        cv::erode(fgMask, fgMask, structuringElement);
+        //cv::dilate(fgMask, fgMask, structuringElement);
+        //cv::erode(fgMask, fgMask, structuringElement);
         
         // Find contours in the foreground mask
         std::vector<std::vector<cv::Point>> contours;
@@ -56,15 +64,15 @@ int main() {
             if (contourArea > 17000 && contourArea < 160000) {
                 // Create a bounding box around the contour
                 cv::Rect boundingBox = cv::boundingRect(contour);
-                //std::cout << contourArea << std::endl;
-                // Draw the bounding box on the frame
-                cv::rectangle(frame, boundingBox, cv::Scalar(0, 255, 0), 2);
 
                 // Check if the bounding box intersects with the left or right region
+                // Draw the bounding box on the frame
                 if (intersects(boundingBox, leftRegion)) {
                     countLeftToRight++;
+                    cv::rectangle(origFrame, boundingBox, cv::Scalar(0, 0, 255), 2);
                 } else if (intersects(boundingBox, rightRegion)) {
                     countRightToLeft++;
+                    cv::rectangle(origFrame, boundingBox, cv::Scalar(0, 255, 0), 2);
                 }
             }
         }
@@ -72,7 +80,7 @@ int main() {
         // Display the frame with bounding boxes and count information
         cv::putText(frame, "Left to Right: " + std::to_string(countLeftToRight), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
         cv::putText(frame, "Right to Left: " + std::to_string(countRightToLeft), cv::Point(10, 70), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
-        cv::imshow("Vehicle Tracking", frame;
+        cv::imshow("Vehicle Tracking", origFrame);
 
         // Check for the 'q' key to quit the program
         if (cv::waitKey(1) == 'q') {
