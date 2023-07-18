@@ -1,124 +1,87 @@
-/*******************************************************************************************************************//**
- * @file program3.cpp
- * @brief C++ example of traffic counting program in Open CV
- * @author Reety Gyawali (1001803756)
- **********************************************************************************************************************/
-
-// include necessary dependencies
+#include <iostream>
+#include <vector>
 #include <iostream>
 #include <cstdio>
-#include <string>
 #include "opencv2/opencv.hpp"
 #include <opencv2/tracking.hpp>
 #include <opencv2/core/ocl.hpp>
 
-// configuration parameters
-#define NUM_COMNMAND_LINE_ARGUMENTS 1
-#define DISPLAY_WINDOW_NAME "Video Frame"
+using namespace cv;
 
-
-
-int main(int argc, char **argv)
-{
-    // store video capture parameters
-    std::string fileName;
-
-    // validate and parse the command line arguments
-    if(argc != NUM_COMNMAND_LINE_ARGUMENTS + 1)
-    {
-        std::printf("USAGE: %s <file_path> \n", argv[0]);
-        return 0;
+int main() {
+    // Open the video file
+    VideoCapture capture("road_traffic.mp4");
+    if (!capture.isOpened()) {
+        std::cerr << "Unable to open video source!" << std::endl;
+        return 1;
     }
-    else
-    {
-        fileName = argv[1];
-    }
-
-    // open the video file
-    cv::VideoCapture capture(fileName);
-    if(!capture.isOpened())
-    {
-        std::printf("Unable to open video source, terminating program! \n");
-        return 0;
-    }
-
-    // create image window
-    //cv::namedWindow("fgmask", cv::WINDOW_AUTOSIZE);
-	cv::namedWindow(DISPLAY_WINDOW_NAME, cv::WINDOW_AUTOSIZE);
 
     // Create the background subtractor
-    cv::Ptr<cv::BackgroundSubtractorMOG2> pMOG2 = cv::createBackgroundSubtractorMOG2(200.0, 60.0, false);
+    Ptr<BackgroundSubtractorMOG2> pMOG2 = createBackgroundSubtractorMOG2();
 
-    // Define variables for counting cars and tracking directions
-    int countLeftToRight = 0;
-    int countRightToLeft = 0;
-    cv::Rect leftRegion(0, capture.get(cv::CAP_PROP_FRAME_HEIGHT) / 2, capture.get(cv::CAP_PROP_FRAME_WIDTH), capture.get(cv::CAP_PROP_FRAME_HEIGHT) / 2);
-    cv::Rect rightRegion(0, 0, capture.get(cv::CAP_PROP_FRAME_WIDTH), capture.get(cv::CAP_PROP_FRAME_HEIGHT) / 2);
+    // Create the blob detector
+    SimpleBlobDetector::Params params;
+    params.filterByArea = true;
+    params.minArea = 17000;
+    params.maxArea = 160000;
+    Ptr<SimpleBlobDetector> detector = SimpleBlobDetector::create(params);
 
-    // Create kernel for morphological operations
-    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(20, 20));
+    // Create the CRST tracker
+    Ptr<Tracker> tracker = TrackerCRST::create();
 
-    bool doCapture = true;
-    while(doCapture)
-    {
-        // attempt to acquire and process an image frame
-        cv::Mat captureFrame;
-        cv::Mat grayFrame;
+    // Create variables for counting vehicles
+    int vehicleCount = 0;
 
-        bool captureSuccess = capture.read(captureFrame);
-        if(captureSuccess)
-        {
-			// pre-process the raw image frame
-            cv::cvtColor(captureFrame, grayFrame, cv::COLOR_BGR2GRAY);
-            cv::normalize(grayFrame, grayFrame, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+    // Process each frame
+    Mat frame, fgMask;
+    while (capture.read(frame)) {
+        // Apply background subtraction
+        pMOG2->apply(frame, fgMask);
 
-			// apply foreground mask to image
-			pMOG2->apply(grayFrame, fgMask);
+        // Perform morphological operations
+        Mat morphed;
+        morphologyEx(fgMask, morphed, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
 
-            // Dilate then erode objects
-            cv::morphologyEx(fgMask, fgMask, cv::MORPH_CLOSE, kernel);
-        
-            // Find contours in the foreground mask
-            std::vector<std::vector<cv::Point>> contours;
-            cv::findContours(fgMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+        // Find contours
+        std::vector<std::vector<Point>> contours;
+        findContours(morphed, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
-            
-            
-            // erode and dilate the edges to remove noise
-            cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(20, 20));
-            cv::Mat edgesDilated;
-            cv::dilate(imageEdges, edgesDilated, kernel);
-            cv::dilate(edgesDilated, edgesDilated, kernel);
-            cv::Mat edgesEroded;
-            cv::erode(edgesDilated, edgesEroded, kernel);
+        // Process each contour
+        for (const auto& contour : contours) {
+            // Detect blobs
+            std::vector<KeyPoint> keypoints;
+            detector->detect(frame, keypoints);
 
-            // locate the image contours (after applying a threshold or canny)
-            std::vector<std::vector<cv::Point> > contours;
-            cv::findContours(edgesEroded, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-
-            // draw the rectangles
-            for (const auto& contour : contours) {
-                cv::Rect boundingBox = cv::boundingRect(contour);
-                cv::rectangle(captureFrame, boundingBox, cv::Scalar(0, 0, 255));
-            }
-
-            cv::imshow("fgmask", fgMask);
-			//cv::imshow(DISPLAY_WINDOW_NAME, captureFrame);
-            //std::cout <<  frameCount << std::endl;
-
-            // check for program termination
-            if((char) cv::waitKey(1) == 'q')
-            {
-                doCapture = false;
+            // Instantiate CRST tracker for each blob
+            for (const auto& keypoint : keypoints) {
+                Rect boundingBox(keypoint.pt.x - keypoint.size / 2, keypoint.pt.y - keypoint.size / 2, keypoint.size, keypoint.size);
+                tracker->init(frame, boundingBox);
             }
         }
-        else
-        {
-            std::printf("Unable to acquire image frame! \n");
+
+        // Update and draw bounding rectangles
+        std::vector<Rect> boundingBoxes;
+        tracker->update(frame, boundingBoxes);
+        for (const auto& boundingBox : boundingBoxes) {
+            rectangle(frame, boundingBox, Scalar(0, 0, 255), 2);
+        }
+
+        // Count the vehicles
+        vehicleCount = boundingBoxes.size();
+
+        // Display the frame with bounding rectangles and vehicle count
+        putText(frame, "Vehicle Count: " + std::to_string(vehicleCount), Point(10, 30), FONT_HERSHEY_SIMPLEX, 1.0, Scalar(0, 255, 0), 2);
+        imshow("Vehicle Tracking", frame);
+
+        // Check for the 'q' key to quit the program
+        if (waitKey(1) == 'q') {
+            break;
         }
     }
 
-    // release program resources before returning
+    // Release the video capture and destroy windows
     capture.release();
-    cv::destroyAllWindows();
+    destroyAllWindows();
+
+    return 0;
 }
