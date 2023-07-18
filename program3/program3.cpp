@@ -1,6 +1,10 @@
 #include <iostream>
 #include <vector>
+#include <cstdio>
+#include <unordered_map>
 #include <opencv2/opencv.hpp>
+#include <opencv2/tracking.hpp>
+#include <opencv2/core/ocl.hpp>
 
 bool intersects(const cv::Rect rect1, const cv::Rect rect2) {
     return (rect1 & rect2).area() > 0;
@@ -40,7 +44,7 @@ int main() {
     int boxId = 0;
     while (capture.read(frame)) {
         origFrame = frame.clone();
-
+        
         // Gray scaling and normalizing
         cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY);
         cv::normalize(frame, frame, 0, 255, cv::NORM_MINMAX, CV_8UC1);
@@ -74,7 +78,7 @@ int main() {
                         tracker->init(frame, boundingBox);
                         trackers[boxId] = tracker;
                         countLeftToRight++;
-                    }
+                    } 
                     cv::rectangle(origFrame, boundingBox, cv::Scalar(0, 0, 255), 2);
                     boxId++;
                 } else if (intersects(boundingBox, rightRegion)) {
@@ -92,6 +96,7 @@ int main() {
         }
 
         // Update the trackers and draw bounding boxes
+        // bunch of trackers corresponding to boxIds, update all of them.
         for (auto& [id, tracker] : trackers) {
             cv::Rect boundingBox;
 
