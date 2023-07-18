@@ -54,37 +54,46 @@ int main(int argc, char const *argv[])
     video_file = argv[1];
   } else
   {
-    video_file = "video.mp4";
+    video_file = "../road_traffic.mp4";
+    cout << "Vid opened" << endl;
   }
+
+  
  
   VideoCapture cap(video_file);
-  if(!cap.isOpened())
+  if(!cap.isOpened()) {
     cerr << "Error opening video file\n";
+  }
  
   // Randomly select 25 frames
   default_random_engine generator;
-  uniform_int_distribution<int>distribution(0, 
-  cap.get(CAP_PROP_FRAME_COUNT));
+  uniform_int_distribution<int>distribution(0, cap.get(CAP_PROP_FRAME_COUNT));
+  cout << cap.get(CAP_PROP_FRAME_COUNT) << endl;
  
   vector<Mat> frames;
   Mat frame;
  
   for(int i=0; i<25; i++) 
   {
+    cout << "in for loop   " << i << endl;
     int fid = distribution(generator);
     cap.set(CAP_PROP_POS_FRAMES, fid);
     Mat frame;
     cap >> frame;
-    if(frame.empty())
+    if(frame.empty()) {
       continue;
+    }
     frames.push_back(frame);
   }
   // Calculate the median along the time axis
   Mat medianFrame = compute_median(frames);
+  cout << "calculated median frame" << endl;
  
   // Display median frame
-  imshow("frame", medianFrame);
-  waitKey(0);
+  // namedWindow("frame", WINDOW_AUTOSIZE);
+  // imshow("frame", medianFrame);
+  // waitKey(0);
+  // destroyWindow("frame");
   
   
   
@@ -94,15 +103,16 @@ cap.set(CAP_PROP_POS_FRAMES, 0);
 // Convert background to grayscale
 Mat grayMedianFrame;
 cvtColor(medianFrame, grayMedianFrame, COLOR_BGR2GRAY);
- 
+  namedWindow("frame", WINDOW_AUTOSIZE);
 // Loop over all frames
 while(1) 
 {
   // Read frame
   cap >> frame;
  
-  if (frame.empty())
+  if (frame.empty()) {
     break;
+  }
  
   // Convert current frame to grayscale
   cvtColor(frame, frame, COLOR_BGR2GRAY);
@@ -115,11 +125,11 @@ while(1)
   threshold(dframe, dframe, 30, 255, THRESH_BINARY);
  
   // Display Image
+ 
   imshow("frame", dframe);
   waitKey(20);
 }
  
   cap.release();
   return 0;
-}
 }

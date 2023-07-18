@@ -1,30 +1,53 @@
+/*******************************************************************************************************************//**
+ * @file program3.cpp
+ * @brief C++ example of traffic counting program in Open CV
+ * @author Reety Gyawali (1001803756)
+ **********************************************************************************************************************/
+
+// include necessary dependencies
 #include <iostream>
-#include <vector>
 #include <cstdio>
-#include <unordered_map>
-#include <opencv2/opencv.hpp>
+#include <string>
+#include "opencv2/opencv.hpp"
 #include <opencv2/tracking.hpp>
 #include <opencv2/core/ocl.hpp>
 
-bool intersects(const cv::Rect rect1, const cv::Rect rect2) {
-    return (rect1 & rect2).area() > 0;
-}
+// configuration parameters
+#define NUM_COMNMAND_LINE_ARGUMENTS 1
+#define DISPLAY_WINDOW_NAME "Video Frame"
 
-int main() {
-    // Open the video file
-    cv::VideoCapture capture("../road_traffic.mp4");
-    if (!capture.isOpened()) {
-        std::cerr << "Unable to open video source!" << std::endl;
-        return 1;
+
+
+int main(int argc, char **argv)
+{
+    // store video capture parameters
+    std::string fileName;
+
+    // validate and parse the command line arguments
+    if(argc != NUM_COMNMAND_LINE_ARGUMENTS + 1)
+    {
+        std::printf("USAGE: %s <file_path> \n", argv[0]);
+        return 0;
+    }
+    else
+    {
+        fileName = argv[1];
     }
 
-    // Define parameters for background subtraction
-    int bgHistory = 200;
-    double bgThreshold = 60.0;
-    bool bgShadowDetection = false;
+    // open the video file
+    cv::VideoCapture capture(fileName);
+    if(!capture.isOpened())
+    {
+        std::printf("Unable to open video source, terminating program! \n");
+        return 0;
+    }
+
+    // create image window
+    //cv::namedWindow("fgmask", cv::WINDOW_AUTOSIZE);
+	cv::namedWindow(DISPLAY_WINDOW_NAME, cv::WINDOW_AUTOSIZE);
 
     // Create the background subtractor
-    cv::Ptr<cv::BackgroundSubtractorMOG2> pMOG2 = cv::createBackgroundSubtractorMOG2(bgHistory, bgThreshold, bgShadowDetection);
+    cv::Ptr<cv::BackgroundSubtractorMOG2> pMOG2 = cv::createBackgroundSubtractorMOG2(200.0, 60.0, false);
 
     // Define variables for counting cars and tracking directions
     int countLeftToRight = 0;
@@ -35,97 +58,67 @@ int main() {
     // Create kernel for morphological operations
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(20, 20));
 
-    // Define a map to store trackers for each box
-    std::unordered_map<int, cv::Ptr<cv::TrackerCSRT>> trackers;
+    bool doCapture = true;
+    while(doCapture)
+    {
+        // attempt to acquire and process an image frame
+        cv::Mat captureFrame;
+        cv::Mat grayFrame;
 
-    // Start processing frames
-    cv::Mat frame;
-    cv::Mat origFrame;
-    int boxId = 0;
-    while (capture.read(frame)) {
-        origFrame = frame.clone();
-        
-        // Gray scaling and normalizing
-        cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY);
-        cv::normalize(frame, frame, 0, 255, cv::NORM_MINMAX, CV_8UC1);
-        
-        // Apply background subtraction
-        cv::Mat fgMask;
-        pMOG2->apply(frame, fgMask);
+        bool captureSuccess = capture.read(captureFrame);
+        if(captureSuccess)
+        {
+			// pre-process the raw image frame
+            cv::cvtColor(captureFrame, grayFrame, cv::COLOR_BGR2GRAY);
+            cv::normalize(grayFrame, grayFrame, 0, 255, cv::NORM_MINMAX, CV_8UC1);
 
-        // Try to fill up holes in foreground mask
-        cv::morphologyEx(fgMask, fgMask, cv::MORPH_CLOSE, kernel);
-        
-        // Find contours in the foreground mask
-        std::vector<std::vector<cv::Point>> contours;
-        cv::findContours(fgMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+			// apply foreground mask to image
+			pMOG2->apply(grayFrame, fgMask);
 
-        // Process each contour
-        for (const auto& contour : contours) {
-            // Calculate the contour area
-            double contourArea = cv::contourArea(contour);
+            // Dilate then erode objects
+            cv::morphologyEx(fgMask, fgMask, cv::MORPH_CLOSE, kernel);
+        
+            // Find contours in the foreground mask
+            std::vector<std::vector<cv::Point>> contours;
+            cv::findContours(fgMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
             
-            // Filter contours based on area threshold
-            if (contourArea > 17000 && contourArea < 160000) {
-                // Create a bounding box around the contour
+            
+            // erode and dilate the edges to remove noise
+            cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(20, 20));
+            cv::Mat edgesDilated;
+            cv::dilate(imageEdges, edgesDilated, kernel);
+            cv::dilate(edgesDilated, edgesDilated, kernel);
+            cv::Mat edgesEroded;
+            cv::erode(edgesDilated, edgesEroded, kernel);
+
+            // locate the image contours (after applying a threshold or canny)
+            std::vector<std::vector<cv::Point> > contours;
+            cv::findContours(edgesEroded, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+            // draw the rectangles
+            for (const auto& contour : contours) {
                 cv::Rect boundingBox = cv::boundingRect(contour);
+                cv::rectangle(captureFrame, boundingBox, cv::Scalar(0, 0, 255));
+            }
 
-                // Check if the bounding box intersects with the left or right region and draw bounding box for the frame
-                if (intersects(boundingBox, leftRegion)) {
-                    if (trackers.find(boxId) == trackers.end()) {
-                        // Create and initialize a CSRT tracker for the bounding box
-                        cv::Ptr<cv::TrackerCSRT> tracker = cv::TrackerCSRT::create();
-                        tracker->init(frame, boundingBox);
-                        trackers[boxId] = tracker;
-                        countLeftToRight++;
-                    } 
-                    cv::rectangle(origFrame, boundingBox, cv::Scalar(0, 0, 255), 2);
-                    boxId++;
-                } else if (intersects(boundingBox, rightRegion)) {
-                    if (trackers.find(boxId) == trackers.end()) {
-                        // Create and initialize a CSRT tracker for the bounding box
-                        cv::Ptr<cv::TrackerCSRT> tracker = cv::TrackerCSRT::create();
-                        tracker->init(frame, boundingBox);
-                        trackers[boxId] = tracker;
-                        countRightToLeft++;
-                    }
-                    cv::rectangle(origFrame, boundingBox, cv::Scalar(0, 255, 0), 2);
-                    boxId++;
-                }
+            cv::imshow("fgmask", fgMask);
+			//cv::imshow(DISPLAY_WINDOW_NAME, captureFrame);
+            //std::cout <<  frameCount << std::endl;
+
+            // check for program termination
+            if((char) cv::waitKey(1) == 'q')
+            {
+                doCapture = false;
             }
         }
-
-        // Update the trackers and draw bounding boxes
-        // bunch of trackers corresponding to boxIds, update all of them.
-        for (auto& [id, tracker] : trackers) {
-            cv::Rect boundingBox;
-
-            // Update the tracker with the current frame
-            bool success = tracker->update(frame, boundingBox);
-
-            // Check if the tracking was successful
-            if (success) {
-                // Draw the bounding box around the tracked object
-                cv::rectangle(origFrame, boundingBox, cv::Scalar(255, 0, 0), 2);
-            } else {
-                // Remove the tracker if tracking fails
-                trackers.erase(id);
-            }
-        }
-        // Display the frame with bounding boxes and count information
-        cv::putText(frame, "Left to Right: " + std::to_string(countLeftToRight), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
-        cv::putText(frame, "Right to Left: " + std::to_string(countRightToLeft), cv::Point(10, 70), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
-        cv::imshow("Vehicle Tracking", origFrame);
-
-        // Check for the 'q' key to quit the program
-        if (cv::waitKey(1) == 'q') {
-            break;
+        else
+        {
+            std::printf("Unable to acquire image frame! \n");
         }
     }
 
-    // Release the video capture and destroy windows
+    // release program resources before returning
     capture.release();
     cv::destroyAllWindows();
-
-    return 0;
 }
