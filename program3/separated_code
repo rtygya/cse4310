@@ -1,0 +1,9 @@
+// Define parameters for background subtraction
+    int bgHistory = 200;
+    double bgThreshold = 60.0;
+    bool bgShadowDetection = false;
+
+    // Create the background subtractor
+    cv::Ptr<cv::BackgroundSubtractorMOG2> pMOG2 = cv::createBackgroundSubtractorMOG2(bgHistory, bgThreshold, bgShadowDetection);
+
+    
