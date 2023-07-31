@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
-project(pcl_plane)
+project(program4)
 
 # set build type to release
 set(CMAKE_BUILD_TYPE "Release")
@@ -13,5 +13,5 @@ include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-add_executable (find_plane find_plane.cpp CloudVisualizer.cpp)
-target_link_libraries (find_plane ${PCL_LIBRARIES})
+add_executable (program4 program4.cpp CloudVisualizer.cpp)
+target_link_libraries (program4 ${PCL_LIBRARIES})
