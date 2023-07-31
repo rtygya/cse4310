@@ -243,16 +243,69 @@ int main(int argc, char** argv)
     }
 
     //remove the plane points
+    //pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloudFiltered2(new pcl::PointCloud<pcl::PointXYZRGBA>);
+    //removePoints(cloud, cloudFiltered2, inliers);
+
+    // open the point cloud
+    pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloudIn(new pcl::PointCloud<pcl::PointXYZRGBA>);
+    openCloud(cloudIn, fileName);
+
+    // downsample the cloud using a voxel grid filter
+    const float voxelSize = 0.01;
     pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloudFiltered(new pcl::PointCloud<pcl::PointXYZRGBA>);
-    removePoints(cloud, cloudFiltered, inliers);
+    pcl::VoxelGrid<pcl::PointXYZRGBA> voxFilter;
+    voxFilter.setInputCloud(cloudIn);
+    voxFilter.setLeafSize(static_cast<float>(voxelSize), static_cast<float>(voxelSize), static_cast<float>(voxelSize));
+    voxFilter.filter(*cloudFiltered);
+    std::cout << "Points before downsampling: " << cloudIn->points.size() << std::endl;
+    std::cout << "Points before downsampling: " << cloudFiltered->points.size() << std::endl;
+
+    // create the vector of indices lists (each element contains a list of imultiple indices)
+    const float clusterDistance = 0.02;
+    int minClusterSize = 50;
+    int maxClusterSize = 100000;
+    std::vector<pcl::PointIndices> clusterIndices;
+
+    // Creating the KdTree object for the search method of the extraction
+    pcl::search::KdTree<pcl::PointXYZRGBA>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGBA>);
+    tree->setInputCloud(cloudFiltered);
+
+    // create the euclidian cluster extraction object
+    pcl::EuclideanClusterExtraction<pcl::PointXYZRGBA> ec;
+    ec.setClusterTolerance(clusterDistance);
+    ec.setMinClusterSize(minClusterSize);
+    ec.setMaxClusterSize(maxClusterSize);
+    ec.setSearchMethod(tree);
+    ec.setInputCloud(cloudFiltered);
+
+    // perform the clustering
+    ec.extract(clusterIndices);
+    std::cout << "Clusters identified: " << clusterIndices.size() << std::endl;
+
+    // color each cluster
+    for(int i = 0; i < clusterIndices.size(); i++)
+    {
+        // create a random color for this cluster
+        int r = rand() % 256;
+        int g = rand() % 256;
+        int b = rand() % 256;
+
+        // iterate through the cluster points
+        for(int j = 0; j < clusterIndices.at(i).indices.size(); j++)
+        {
+            cloudFiltered->points.at(clusterIndices.at(i).indices.at(j)).r = r;
+            cloudFiltered->points.at(clusterIndices.at(i).indices.at(j)).g = g;
+            cloudFiltered->points.at(clusterIndices.at(i).indices.at(j)).b = b;
+        }
+    }
     
     // get the elapsed time
     double elapsedTime = watch.getTimeSeconds();
     std::cout << elapsedTime << " seconds passed " << std::endl;
 
     // render the scene
-    CV.addCloud(cloud);
-    CV.addCoordinateFrame(cloud->sensor_origin_, cloud->sensor_orientation_);
+    CV.addCloud(cloudFiltered);
+    CV.addCoordinateFrame(cloudFiltered->sensor_origin_, cloudFiltered->sensor_orientation_);
 
     // register mouse and keyboard event callbacks
     CV.registerPointPickingCallback(pointPickingCallback, cloud);
