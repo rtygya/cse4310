@@ -35,6 +35,13 @@
 #include <pcl/sample_consensus/sac_model_plane.h>
 #include <pcl/segmentation/sac_segmentation.h>
 
+#include <pcl/filters/voxel_grid.h>
+
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/kdtree/io.h>
+#include <pcl/segmentation/euclidean_cluster_comparator.h>
+#include <pcl/segmentation/extract_clusters.h>
+
 #define NUM_COMMAND_ARGS 1
 
 using namespace std;
@@ -43,6 +50,7 @@ using namespace std;
 void pointPickingCallback(const pcl::visualization::PointPickingEvent& event, void* cookie);
 void keyboardCallback(const pcl::visualization::KeyboardEvent &event, void* viewer_void);
 void segmentPlane(const pcl::PointCloud<pcl::PointXYZRGBA>::ConstPtr &cloudIn, pcl::PointIndices::Ptr &inliers, double distanceThreshold, int maxIterations);
+void removePoints(pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudIn, pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudOut, const pcl::PointIndices::ConstPtr &inliers);
 
 /***********************************************************************************************************************
 * @brief callback function for handling a point picking event
@@ -177,6 +185,15 @@ void segmentPlane(const pcl::PointCloud<pcl::PointXYZRGBA>::ConstPtr &cloudIn, p
     seg.segment(*inliers, *coefficients);
 }
 
+void removePoints(const pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudIn, pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudOut, const pcl::PointIndices::ConstPtr &inliers)
+{
+    pcl::ExtractIndices<pcl::PointXYZRGBA> extract;
+    extract.setInputCloud(cloudIn);
+    extract.setIndices(inliers);
+    extract.setNegative(true);
+    extract.filter(*cloudOut);
+}
+
 /***********************************************************************************************************************
 * @brief program entry point
 * @param[in] argc number of command line arguments
@@ -216,15 +233,19 @@ int main(int argc, char** argv)
     segmentPlane(cloud, inliers, distanceThreshold, maxIterations);
     std::cout << "Segmentation result: " << inliers->indices.size() << " points" << std::endl;
     
-    // color the plane inliers green
+    // color the plane inliers white
     for(int i = 0; i < inliers->indices.size(); i++)
     {
         int index = inliers->indices.at(i);
-        cloud->points.at(index).r = 0;
+        cloud->points.at(index).r = 255;
         cloud->points.at(index).g = 255;
-        cloud->points.at(index).b = 0;
+        cloud->points.at(index).b = 255;
     }
 
+    //remove the plane points
+    pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloudFiltered(new pcl::PointCloud<pcl::PointXYZRGBA>);
+    removePoints(cloud, cloudFiltered, inliers);
+    
     // get the elapsed time
     double elapsedTime = watch.getTimeSeconds();
     std::cout << elapsedTime << " seconds passed " << std::endl;
