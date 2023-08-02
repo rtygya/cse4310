@@ -51,10 +51,10 @@ int main(int argc, char **argv)
     cv::namedWindow(DISPLAY_WINDOW_NAME, cv::WINDOW_AUTOSIZE);
 
     //Show template and convert to grayscale
-    cv::namedWindow("Template", cv::WINDOW_AUTOSIZE);
-    cv::imshow("Template", imageTemplate);
-    // cv::Mat imageTemplateGray;
-    // cv::cvtColor(imageTemplate, imageTemplateGray, cv::COLOR_BGR2GRAY);
+    //cv::namedWindow("Template", cv::WINDOW_AUTOSIZE);
+    //cv::imshow("Template", imageTemplate);
+    cv::Mat imageTemplateGray;
+    cv::cvtColor(imageTemplate, imageTemplateGray, cv::COLOR_BGR2GRAY);
 
     /************************************************** START PROCESSING FRAMES *************************************************/
     
@@ -77,37 +77,20 @@ int main(int argc, char **argv)
         cv::matchTemplate(frameGray, imageTemplateGray, searchResult, match_method);
         cv::normalize(searchResult, searchResult, 0, 1, cv::NORM_MINMAX, -1, cv::Mat());
 
-        // Find all matches above the threshold
-        double threshold = 0.8; 
-        std::vector<cv::Point> matchLocations;
-        cv::findNonZero(searchResult > threshold, matchLocations);
 
-        // Draw rectangles around all matching objects
-        for (const auto& matchLocation : matchLocations) {
-            cv::Point topLeft(matchLocation.x, matchLocation.y);
-            cv::Point bottomRight(matchLocation.x + imageTemplateGray.cols, matchLocation.y + imageTemplateGray.rows);
-            cv::rectangle(frame, topLeft, bottomRight, cv::Scalar(0, 255, 0), 1);
-        }
     
-        /* find the location of the best fit
+        //find the location of the best fit
         double minVal;
         double maxVal;
         cv::Point minLocation;
         cv::Point maxLocation;
         cv::Point matchLocation;
         cv::minMaxLoc(searchResult, &minVal, &maxVal, &minLocation, &maxLocation, cv::Mat());
-        if(match_method  == CV_TM_SQDIFF || match_method == CV_TM_SQDIFF_NORMED)
-        {
-            matchLocation = minLocation;
-        }
-        else
-        {
-            matchLocation = maxLocation;
-        }
+        matchLocation = maxLocation;
     
         // annotate the scene image
         cv::rectangle(frame, matchLocation, cv::Point(matchLocation.x + imageTemplate.cols , matchLocation.y + imageTemplate.rows), CV_RGB(0,255,0), 1);
-        */
+        
         // display the frame
         cv::imshow(DISPLAY_WINDOW_NAME, frame);
         
