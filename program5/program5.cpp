@@ -86,6 +86,7 @@ int main(int argc, char **argv)
         cv::Point maxLocation;
         cv::Point matchLocation;
 
+        /*
         while(1)
         {
             cv::minMaxLoc(searchResult, &minVal, &maxVal, &minLocation, &maxLocation, cv::Mat());
@@ -101,7 +102,18 @@ int main(int argc, char **argv)
             }
                 
         }
-        
+        */
+
+        // Find all matches above the threshold
+        std::vector<cv::Point> matchLocations;
+        cv::findNonZero(searchResult > 0.96, matchLocations);
+
+        // Draw rectangles around all matching objects
+        for (const auto& matchLocation : matchLocations) {
+            cv::Point topLeft(matchLocation.x, matchLocation.y);
+            cv::Point bottomRight(matchLocation.x + imageTemplateGray.cols, matchLocation.y + imageTemplateGray.rows);
+            cv::rectangle(frame, topLeft, bottomRight, cv::Scalar(0, 255, 0), 1);
+        }
 
         
         // display the frame
