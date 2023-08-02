@@ -1,5 +1,4 @@
-/*
-******************************************************************************************************************//**
+/*********************************************************************************************************************
  * @file program5.cpp
  * @brief C++ example of simple screen scraping program using template matching with OpenCV
  * @author Reety Gyawali
@@ -54,8 +53,8 @@ int main(int argc, char **argv)
     //Show template and convert to grayscale
     cv::namedWindow("Template", cv::WINDOW_AUTOSIZE);
     cv::imshow("Template", imageTemplate);
-    cv::Mat imageTemplateGray;
-    cv::cvtColor(imageTemplate, imageTemplateGray, cv::COLOR_BGR2GRAY);
+    // cv::Mat imageTemplateGray;
+    // cv::cvtColor(imageTemplate, imageTemplateGray, cv::COLOR_BGR2GRAY);
 
     /************************************************** START PROCESSING FRAMES *************************************************/
     
