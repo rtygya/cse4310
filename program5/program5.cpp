@@ -1,4 +1,5 @@
-/*******************************************************************************************************************//**
+/*
+******************************************************************************************************************//**
  * @file program5.cpp
  * @brief C++ example of simple screen scraping program using template matching with OpenCV
  * @author Reety Gyawali
@@ -96,7 +97,7 @@ int main(int argc, char **argv)
         }
     
         // annotate the scene image
-        cv::rectangle(imageScene, matchLocation, cv::Point(matchLocation.x + imageTemplate.cols , matchLocation.y + imageTemplate.rows), CV_RGB(0,255,0), 3);
+        cv::rectangle(frame, matchLocation, cv::Point(matchLocation.x + imageTemplate.cols , matchLocation.y + imageTemplate.rows), CV_RGB(0,255,0), 3);
     
         // display the frame
         cv::imshow(DISPLAY_WINDOW_NAME, frame);
