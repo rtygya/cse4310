@@ -85,11 +85,24 @@ int main(int argc, char **argv)
         cv::Point minLocation;
         cv::Point maxLocation;
         cv::Point matchLocation;
-        cv::minMaxLoc(searchResult, &minVal, &maxVal, &minLocation, &maxLocation, cv::Mat());
-        matchLocation = maxLocation;
-    
-        // annotate the scene image
-        cv::rectangle(frame, matchLocation, cv::Point(matchLocation.x + imageTemplate.cols , matchLocation.y + imageTemplate.rows), CV_RGB(0,255,0), 1);
+
+        while(1)
+        {
+            cv::minMaxLoc(searchResult, &minVal, &maxVal, &minLocation, &maxLocation, cv::Mat());
+            
+            if (maxVal >= 0.96)
+            {
+                matchLocation = maxLocation;
+                // annotate the scene image
+                cv::rectangle(frame, matchLocation, cv::Point(matchLocation.x + imageTemplate.cols , matchLocation.y + imageTemplate.rows), CV_RGB(0,255,0), 1);
+                cv::floodFill(searchResult, maxLocation, cv::Scalar(0));
+            } else {
+                break;
+            }
+                
+        }
+        
+
         
         // display the frame
         cv::imshow(DISPLAY_WINDOW_NAME, frame);
