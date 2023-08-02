@@ -60,8 +60,6 @@ int main(int argc, char **argv)
     /************************************************** START PROCESSING FRAMES *************************************************/
     
     cv::Mat frame;
-
-    int frameCount = 0;
   
     while (1) {    
         capture >> frame;
@@ -97,12 +95,10 @@ int main(int argc, char **argv)
         }
     
         // annotate the scene image
-        cv::rectangle(frame, matchLocation, cv::Point(matchLocation.x + imageTemplate.cols , matchLocation.y + imageTemplate.rows), CV_RGB(0,255,0), 3);
+        cv::rectangle(frame, matchLocation, cv::Point(matchLocation.x + imageTemplate.cols , matchLocation.y + imageTemplate.rows), CV_RGB(0,255,0), 1);
     
         // display the frame
         cv::imshow(DISPLAY_WINDOW_NAME, frame);
-        frameCount++;
-        std::cout << frameCount << std::endl;
         
         // Check for the 'q' key to quit the program
         if ((char) cv::waitKey(1) == 'q') {
