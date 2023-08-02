@@ -76,8 +76,20 @@ int main(int argc, char **argv)
         int match_method = CV_TM_CCORR_NORMED;
         cv::matchTemplate(frameGray, imageTemplateGray, searchResult, match_method);
         cv::normalize(searchResult, searchResult, 0, 1, cv::NORM_MINMAX, -1, cv::Mat());
+
+        // Find all matches above the threshold
+        double threshold = 0.8; 
+        std::vector<cv::Point> matchLocations;
+        cv::findNonZero(searchResult > threshold, matchLocations);
+
+        // Draw rectangles around all matching objects
+        for (const auto& matchLocation : matchLocations) {
+            cv::Point topLeft(matchLocation.x, matchLocation.y);
+            cv::Point bottomRight(matchLocation.x + imageTemplateGray.cols, matchLocation.y + imageTemplateGray.rows);
+            cv::rectangle(frame, topLeft, bottomRight, cv::Scalar(0, 255, 0), 1);
+        }
     
-        // find the location of the best fit
+        /* find the location of the best fit
         double minVal;
         double maxVal;
         cv::Point minLocation;
@@ -95,7 +107,7 @@ int main(int argc, char **argv)
     
         // annotate the scene image
         cv::rectangle(frame, matchLocation, cv::Point(matchLocation.x + imageTemplate.cols , matchLocation.y + imageTemplate.rows), CV_RGB(0,255,0), 1);
-    
+        */
         // display the frame
         cv::imshow(DISPLAY_WINDOW_NAME, frame);
         
