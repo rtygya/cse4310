@@ -1,9 +1,6 @@
 /***********************************************************************************************************************
 * @file program4.cpp
-* @brief finds a plane in a PCD file
-*
-* Simple example of loading and displaying PCD files with basic plane segmentation
-*
+* @brief Simple 3D Box Dimensioning System Using PCL
 * @author Reety Gyawali
 **********************************************************************************************************************/
 
@@ -167,6 +164,7 @@ void segmentPlane(const pcl::PointCloud<pcl::PointXYZRGBA>::ConstPtr &cloudIn, p
     // Segment the largest planar component from the remaining cloud
     seg.setInputCloud(cloudIn);
     seg.segment(*inliers, *coefficients);
+    return coefficients;
 }
 
 void removePoints(const pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudIn, pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudOut, const pcl::PointIndices::ConstPtr &inliers)
@@ -176,6 +174,27 @@ void removePoints(const pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudIn, pcl::P
     extract.setIndices(inliers);
     extract.setNegative(true);
     extract.filter(*cloudOut);
+}
+
+void getBoxDimensions(const pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cluster, double &length, double &width, double &height) {
+    pcl::PointCloud<pcl::PointXYZRGBA>::Ptr clusterProjected(new pcl::PointCloud<pcl::PointXYZRGBA>);
+
+    // Project points onto the plane (tabletop) to get 2D coordinates
+    pcl::ModelCoefficients::Ptr planeCoefficients = planeDetector(cloud, distanceThreshold, maxIterations);
+    pcl::ProjectInliers<pcl::PointXYZRGBA> proj;
+    proj.setModelType(pcl::SACMODEL_PLANE);
+    proj.setInputCloud(cluster);
+    proj.setModelCoefficients(planeCoefficients);
+    proj.filter(*clusterProjected);
+
+    // Compute the bounding box for the projected cluster
+    pcl::PointXYZRGBA minPt, maxPt;
+    pcl::getMinMax3D(*clusterProjected, minPt, maxPt);
+
+    // Compute the dimensions (length and width) of the box top
+    length = maxPt.x - minPt.x;
+    width = maxPt.y - minPt.y;
+    height = maxPt.z - minPt.z;
 }
 
 /***********************************************************************************************************************
@@ -196,9 +215,6 @@ int main(int argc, char** argv)
 
     // parse the command line arguments
     char* fileName = argv[1];
-
-    // create a stop watch for measuring time
-    pcl::StopWatch watch;
 
     // initialize the cloud viewer
     CloudVisualizer CV("Rendering Window");
@@ -225,24 +241,20 @@ int main(int argc, char** argv)
         cloud->points.at(index).g = 255;
         cloud->points.at(index).b = 255;
     }
-
+    
     //remove the plane points
-    //pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloudFiltered2(new pcl::PointCloud<pcl::PointXYZRGBA>);
-    //removePoints(cloud, cloudFiltered2, inliers);
-
-    // open the point cloud
-    pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloudIn(new pcl::PointCloud<pcl::PointXYZRGBA>);
-    openCloud(cloudIn, fileName);
+    pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud2(new pcl::PointCloud<pcl::PointXYZRGBA>);
+    removePoints(cloud, cloud2, inliers);
 
     // downsample the cloud using a voxel grid filter
     const float voxelSize = 0.01;
-    pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloudFiltered(new pcl::PointCloud<pcl::PointXYZRGBA>);
+    pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud2Filtered(new pcl::PointCloud<pcl::PointXYZRGBA>);
     pcl::VoxelGrid<pcl::PointXYZRGBA> voxFilter;
-    voxFilter.setInputCloud(cloudIn);
+    voxFilter.setInputCloud(cloud2);
     voxFilter.setLeafSize(static_cast<float>(voxelSize), static_cast<float>(voxelSize), static_cast<float>(voxelSize));
-    voxFilter.filter(*cloudFiltered);
-    std::cout << "Points before downsampling: " << cloudIn->points.size() << std::endl;
-    std::cout << "Points before downsampling: " << cloudFiltered->points.size() << std::endl;
+    voxFilter.filter(*cloud2Filtered);
+    std::cout << "Points before downsampling: " << cloud2->points.size() << std::endl;
+    std::cout << "Points before downsampling: " << cloud2Filtered->points.size() << std::endl;
 
     // create the vector of indices lists (each element contains a list of imultiple indices)
     const float clusterDistance = 0.02;
@@ -252,7 +264,7 @@ int main(int argc, char** argv)
 
     // Creating the KdTree object for the search method of the extraction
     pcl::search::KdTree<pcl::PointXYZRGBA>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGBA>);
-    tree->setInputCloud(cloudFiltered);
+    tree->setInputCloud(cloud2Filtered);
 
     // create the euclidian cluster extraction object
     pcl::EuclideanClusterExtraction<pcl::PointXYZRGBA> ec;
@@ -260,7 +272,7 @@ int main(int argc, char** argv)
     ec.setMinClusterSize(minClusterSize);
     ec.setMaxClusterSize(maxClusterSize);
     ec.setSearchMethod(tree);
-    ec.setInputCloud(cloudFiltered);
+    ec.setInputCloud(cloud2Filtered);
 
     // perform the clustering
     ec.extract(clusterIndices);
@@ -269,27 +281,44 @@ int main(int argc, char** argv)
     // color each cluster
     for(int i = 0; i < clusterIndices.size(); i++)
     {
-        // create a random color for this cluster
-        int r = rand() % 256;
-        int g = rand() % 256;
-        int b = rand() % 256;
+        pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cluster(new pcl::PointCloud<pcl::PointXYZRGBA>);
+        pcl::PointIndices::Ptr indices(new pcl::PointIndices(clusterIndices[i]));
+        pcl::ExtractIndices<pcl::PointXYZRGBA> extract;
+        extract.setInputCloud(cloud2Filtered);
+        extract.setIndices(indices);
+        extract.filter(*cluster);
 
-        // iterate through the cluster points
+        double length, width, height;
+        getBoxDimensions(cluster, length, width, height);
+
+        std::cout << "Box " << i+1 << ": " << length << " " << width << " " << height << std::endl;
+        
+        // Alternate between green and red for each cluster
+        int r, g, b;
+        if (i % 2 == 0) {
+            // Cluster is green
+            r = 0;
+            g = 255;
+            b = 0;
+        } else {
+            // Cluster is red
+            r = 255;
+            g = 0;
+            b = 0;
+        }
+
+        // Color the cluster points
         for(int j = 0; j < clusterIndices.at(i).indices.size(); j++)
         {
-            cloudFiltered->points.at(clusterIndices.at(i).indices.at(j)).r = r;
-            cloudFiltered->points.at(clusterIndices.at(i).indices.at(j)).g = g;
-            cloudFiltered->points.at(clusterIndices.at(i).indices.at(j)).b = b;
-        }
+            cloud->points.at(clusterIndices.at(i).indices.at(j)).r = r;
+            cloud->points.at(clusterIndices.at(i).indices.at(j)).g = g;
+            cloud->points.at(clusterIndices.at(i).indices.at(j)).b = b;
+        }  
     }
-    
-    // get the elapsed time
-    double elapsedTime = watch.getTimeSeconds();
-    std::cout << elapsedTime << " seconds passed " << std::endl;
 
     // render the scene
-    CV.addCloud(cloudFiltered);
-    CV.addCoordinateFrame(cloudFiltered->sensor_origin_, cloudFiltered->sensor_orientation_);
+    CV.addCloud(cloud);
+    CV.addCoordinateFrame(cloud->sensor_origin_, cloud->sensor_orientation_);
 
     // register mouse and keyboard event callbacks
     CV.registerPointPickingCallback(pointPickingCallback, cloud);
