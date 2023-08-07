@@ -22,6 +22,8 @@
 #include <pcl/kdtree/io.h>
 #include <pcl/segmentation/euclidean_cluster_comparator.h>
 #include <pcl/segmentation/extract_clusters.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/project_inliers.h>
 
 #define NUM_COMMAND_ARGS 1
 
@@ -146,9 +148,8 @@ bool openCloud(pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudOut, const char* fi
  * @param[in] distanceThreshold maximum distance of a point to the planar model to be considered an inlier
  * @param[in] maxIterations maximum number of iterations to attempt before returning
  * @return the number of inliers
- * @author Christopher D. McMurrough
  **********************************************************************************************************************/
-void segmentPlane(const pcl::PointCloud<pcl::PointXYZRGBA>::ConstPtr &cloudIn, pcl::PointIndices::Ptr &inliers, double distanceThreshold, int maxIterations)
+pcl::ModelCoefficients::Ptr segmentPlane(const pcl::PointCloud<pcl::PointXYZRGBA>::ConstPtr &cloudIn, pcl::PointIndices::Ptr &inliers, double distanceThreshold, int maxIterations)
 {
     // store the model coefficients
     pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
@@ -176,11 +177,10 @@ void removePoints(const pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudIn, pcl::P
     extract.filter(*cloudOut);
 }
 
-void getBoxDimensions(const pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cluster, double &length, double &width, double &height) {
+void getBoxDimensions(pcl::ModelCoefficients::Ptr planeCoefficients, const pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cluster, double &length, double &width, double &height) {
     pcl::PointCloud<pcl::PointXYZRGBA>::Ptr clusterProjected(new pcl::PointCloud<pcl::PointXYZRGBA>);
 
     // Project points onto the plane (tabletop) to get 2D coordinates
-    pcl::ModelCoefficients::Ptr planeCoefficients = planeDetector(cloud, distanceThreshold, maxIterations);
     pcl::ProjectInliers<pcl::PointXYZRGBA> proj;
     proj.setModelType(pcl::SACMODEL_PLANE);
     proj.setInputCloud(cluster);
@@ -219,9 +219,6 @@ int main(int argc, char** argv)
     // initialize the cloud viewer
     CloudVisualizer CV("Rendering Window");
 
-    // start timing the processing step
-    watch.reset();
-
     // open the point cloud
     pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
     openCloud(cloud, fileName);
@@ -230,7 +227,7 @@ int main(int argc, char** argv)
     const float distanceThreshold = 0.0254;
     const int maxIterations = 5000;
     pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-    segmentPlane(cloud, inliers, distanceThreshold, maxIterations);
+    pcl::ModelCoefficients::Ptr coefficients = segmentPlane(cloud, inliers, distanceThreshold, maxIterations);
     std::cout << "Segmentation result: " << inliers->indices.size() << " points" << std::endl;
     
     // color the plane inliers white
@@ -289,7 +286,7 @@ int main(int argc, char** argv)
         extract.filter(*cluster);
 
         double length, width, height;
-        getBoxDimensions(cluster, length, width, height);
+        getBoxDimensions(coefficients, cluster, length, width, height);
 
         std::cout << "Box " << i+1 << ": " << length << " " << width << " " << height << std::endl;
         
