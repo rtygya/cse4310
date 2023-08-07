@@ -32,7 +32,7 @@ using namespace std;
 // function prototypes
 void pointPickingCallback(const pcl::visualization::PointPickingEvent& event, void* cookie);
 void keyboardCallback(const pcl::visualization::KeyboardEvent &event, void* viewer_void);
-void segmentPlane(const pcl::PointCloud<pcl::PointXYZRGBA>::ConstPtr &cloudIn, pcl::PointIndices::Ptr &inliers, double distanceThreshold, int maxIterations);
+pcl::ModelCoefficients::Ptr segmentPlane(const pcl::PointCloud<pcl::PointXYZRGBA>::ConstPtr &cloudIn, pcl::PointIndices::Ptr &inliers, double distanceThreshold, int maxIterations);
 void removePoints(pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudIn, pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudOut, const pcl::PointIndices::ConstPtr &inliers);
 
 /***********************************************************************************************************************
