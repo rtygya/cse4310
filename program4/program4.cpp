@@ -2,10 +2,6 @@
 * @file program4.cpp
 * @brief Simple 3D Box Dimensioning System Using PCL
 * @author Reety Gyawali
-/usr/bin/ld: CMakeFiles/program4.dir/program4.cpp.o: in function `main':
-program4.cpp:(.text.startup+0x3b5): undefined reference to `removePoints(std::shared_ptr<pcl::PointCloud<pcl::PointXYZRGBA> >&, std::shared_ptr<pcl::PointCloud<pcl::PointXYZRGBA> >&, std::shared_ptr<pcl::PointIndices const> const&)'
-collect2: error: ld returned 1 exit status
-
 **********************************************************************************************************************/
 
 #include "CloudVisualizer.h"
@@ -37,7 +33,7 @@ using namespace std;
 void pointPickingCallback(const pcl::visualization::PointPickingEvent& event, void* cookie);
 void keyboardCallback(const pcl::visualization::KeyboardEvent &event, void* viewer_void);
 pcl::ModelCoefficients::Ptr segmentPlane(const pcl::PointCloud<pcl::PointXYZRGBA>::ConstPtr &cloudIn, pcl::PointIndices::Ptr &inliers, double distanceThreshold, int maxIterations);
-void removePoints(pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudIn, pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudOut, const pcl::PointIndices::ConstPtr &inliers);
+void removePoints(const pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudIn, pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudOut, const pcl::PointIndices::ConstPtr &inliers);
 
 /***********************************************************************************************************************
 * @brief callback function for handling a point picking event
@@ -176,7 +172,7 @@ void removePoints(const pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloudIn, pcl::P
 {
     pcl::ExtractIndices<pcl::PointXYZRGBA> extract;
     extract.setInputCloud(cloudIn);
-    extract.setIndices(inliers);
+    extract.setIndices (inliers);
     extract.setNegative(true);
     extract.filter(*cloudOut);
 }
